@@ -1,0 +1,23 @@
+{
+  "name": "@excaliburjs/dev-tools",
+  "version": "0.25.0",
+  "description": "Excalibur Debug Tools",
+  "scripts": {
+    "start": "parcel serve index.html"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tweakpane/core": "1.0.8",
+    "tweakpane": "3.0.7"
+  },
+  "devDependencies": {
+    "@parcel/transformer-glsl": "^2.0.1",
+    "parcel": "2.0.1",
+    "typescript": "4.5.4",
+    "excalibur": "^0.25.1"
+  },
+  "peerDependencies": {
+    "excalibur": "^0.25.1"
+  }
+}
