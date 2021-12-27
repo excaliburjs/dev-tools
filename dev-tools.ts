@@ -1,4 +1,4 @@
-import { Actor, BodyComponent, ColliderComponent, CollisionGroup, CollisionGroupManager, CollisionType, Color, Engine, Graphic, GraphicsComponent, MotionComponent, Physics, PointerSystem, Scene, ScreenDimension, TestClock, TransformComponent, Vector } from "excalibur";
+import { Actor, BodyComponent, ColliderComponent, CollisionGroup, CollisionGroupManager, CollisionType, Color, CoordPlane, Engine, Graphic, GraphicsComponent, MotionComponent, Physics, PointerSystem, Scene, ScreenDimension, TestClock, TransformComponent, Vector } from "excalibur";
 import { BladeApi, FolderApi, ListApi, Pane, SliderApi, TabApi, TabPageApi } from "tweakpane";
 
 export class DevTool {
@@ -221,6 +221,13 @@ export class DevTool {
                     const transform = this.selectedEntityFolder.addFolder({
                         title: 'Transform'
                     });
+                    const coordPlane = transform.addBlade({
+                        view: 'list',
+                        label: 'coord plane',
+                        options: [CoordPlane.World, CoordPlane.Screen].map(c => ({text: c, value: c})),
+                        value: transformComponent.coordPlane
+                    }) as ListApi<CoordPlane>;
+                    coordPlane.on("change", ev => transformComponent.coordPlane = ev.value);
 
                     const tx = transform.addInput(transformComponent, "pos");
                     const rot = transform.addInput(transformComponent, "rotation", {
