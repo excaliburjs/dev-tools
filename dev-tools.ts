@@ -33,7 +33,7 @@ export class DevTool {
             expanded: true
         });
         const style = document.createElement('style');
-        style.innerText = ".excalibur-tweakpane-custom { width: 400px; }";
+        style.innerText = ".excalibur-tweakpane-custom { width: 405px; }";
         document.head.appendChild(style);
         this.pane.element.parentElement.classList.add("excalibur-tweakpane-custom");
 
