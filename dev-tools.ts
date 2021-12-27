@@ -320,7 +320,6 @@ export class DevTool {
                 }
             }
 
-            console.log(dropdown);
             const graphicsList = graphics.addBlade({
                 view: 'list',
                 label: 'graphics',
