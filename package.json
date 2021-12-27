@@ -28,6 +28,6 @@
     "webpack-cli": "4.9.1"
   },
   "peerDependencies": {
-    "excalibur": "^0.25.1"
+    "excalibur": "^0.25.2"
   }
 }
