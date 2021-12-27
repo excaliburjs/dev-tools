@@ -51,9 +51,7 @@ const text = new Text({
     }),
 });
 const label = new Actor({
-    pos: vec(400, 100),
-    width: 100,
-    height: 100
+    pos: vec(400, 100)
 });
 label.graphics.use(text);
 label.graphics.add("other text", new Text({text: "Other Text!!! 💪"}))

@@ -6,7 +6,7 @@ export class DevTool {
     public tabs: TabApi;
     public pointerSystem: PointerSystem;
     pointerPos: { x: number, y: number } = { x: 0, y: 0 };
-    highlighted: number[] = [-1];
+    highlightedEntities: number[] = [-1];
     selectedEntity: Actor | null = null;
     selectedEntityId: number = -1;
     currentResolution: ScreenDimension;
@@ -55,6 +55,8 @@ export class DevTool {
         this.debugTab = this.tabs.pages[5];
 
         this.pointerSystem = engine.currentScene.world.systemManager.get(PointerSystem);
+        this.pointerSystem.overrideUseGraphicsBounds = true;
+        this.pointerSystem.overrideUseColliderShape = true;
         engine.debug.transform.showPosition = true;
         this.selectedEntityFolder = this.selectedEntityTab.addFolder({
             title: 'Selected',
@@ -71,15 +73,7 @@ export class DevTool {
             this.update(this)
         }, 30)
 
-        this.start();
-    }
-
-    private _findSceneName(scene: Scene): string {
-        for (let key in this.engine.scenes) {
-            if (scene === this.engine.scenes[key]) {
-                return key;
-            }
-        }
+        this.addListeners();
     }
 
     private _buildMain() {
@@ -135,7 +129,11 @@ export class DevTool {
             label: 'pointer pos (world)'
         });
 
-        
+        this.pane.addInput(this, "selectedEntityId", {
+            "label": "Select By Id"
+        }).on("change", ev => this.selectEntityById(ev.value));
+
+
     }
 
     public update(devtool: DevTool) {
@@ -152,7 +150,7 @@ export class DevTool {
             entityIds.push(-1); // nothing selected
             entityIds.push(this.selectedEntityId);
         }
-        this.highlighted = entityIds;
+        this.highlightedEntities = entityIds;
         game.debug.filter.useFilter = true;
         game.debug.filter.ids = entityIds;
 
@@ -181,189 +179,201 @@ export class DevTool {
         }
     }
 
-    public start() {
+    public selectEntityById(id: number) {
+        const game = this.engine;
+        this.selectedEntityId = id;
+        this.selectedEntity = game.currentScene.world.entityManager.getById(id) as Actor;
+        if (this.selectedEntityFolder) {
+            this.selectedEntityFolder.dispose();
+            this.selectedEntityFolder = this.selectedEntityTab.addFolder({
+                title: 'Selected'
+            });
+        }
+        this.selectedEntityFolder.addBlade({ view: 'text', label: 'id', value: this.selectedEntity.id.toString(), parse: v => String(v) });
+        this.selectedEntityFolder.addInput(this.selectedEntity, 'name');
+
+        this.selectedEntityFolder.addBlade({
+            view: 'text',
+            label: 'tags',
+            value: this.selectedEntity.tags.join(',') || 'none',
+            parse: v => String(v)
+        });
+
+        if (this.selectedEntity.color) {
+            this.selectedEntityFolder.addInput(this.selectedEntity as Actor, 'color').on("change", ev => {
+                this.selectedEntity.color = new Color(ev.value.r, ev.value.g, ev.value.b, ev.value.a)
+            });
+        }
+        this.selectedEntityFolder.addBlade({
+            view: 'text',
+            label: 'parent',
+            value: this.selectedEntity.parent ? `(${this.selectedEntity.parent?.id}) ${this.selectedEntity.parent?.name}` : 'none',
+            parse: (v) => String(v)
+        });
+        this.selectedEntityFolder.addBlade({
+            view: 'list',
+            label: 'children',
+            options: this.selectedEntity.children.map(c => ({ text: `(${c.id}) ${c.name}`, value: c.id })),
+            value: this.selectedEntity.children.length ? this.selectedEntity.children[0].id : 'none',
+        });
+
+
+
+        const transformComponent = this.selectedEntity.get(TransformComponent)
+        if (transformComponent) {
+
+            const transform = this.selectedEntityFolder.addFolder({
+                title: 'Transform'
+            });
+            const coordPlane = transform.addBlade({
+                view: 'list',
+                label: 'coord plane',
+                options: [CoordPlane.World, CoordPlane.Screen].map(c => ({ text: c, value: c })),
+                value: transformComponent.coordPlane
+            }) as ListApi<CoordPlane>;
+            coordPlane.on("change", ev => transformComponent.coordPlane = ev.value);
+
+            const tx = transform.addInput(transformComponent, "pos");
+            const rot = transform.addInput(transformComponent, "rotation", {
+                min: 0,
+                max: 2 * Math.PI,
+            });
+            const scale = transform.addInput(transformComponent, 'scale');
+            transform.addSeparator();
+
+            const globalTx = transform.addInput(transformComponent, "globalPos", { label: "global pos" })
+            const globalRot = transform.addInput(transformComponent, "globalRotation", {
+                label: "global rot",
+                min: 0,
+                max: 2 * Math.PI,
+            });
+            const globalScale = transform.addInput(transformComponent, 'globalScale', { label: "global pos" });
+
+            globalTx.on("change", () => tx.refresh());
+            tx.on("change", () => globalTx.refresh());
+
+            globalRot.on("change", () => rot.refresh());
+            rot.on("change", () => globalRot.refresh());
+
+            globalScale.on("change", () => scale.refresh());
+            scale.on("change", () => globalScale.refresh());
+        }
+
+        const motionComponent = this.selectedEntity.get(MotionComponent);
+        if (motionComponent) {
+
+            const motion = this.selectedEntityFolder.addFolder({
+                title: 'Motion'
+            });
+            motion.addInput(motionComponent, "vel");
+            motion.addInput(motionComponent, "acc");
+            motion.addInput(motionComponent, "angularVelocity", {
+                step: .1
+            });
+            motion.addInput(motionComponent, "scaleFactor");
+            motion.addInput(motionComponent, "inertia");
+        }
+
+        const graphicsComponent = this.selectedEntity.get(GraphicsComponent);
+        if (graphicsComponent) {
+
+            const graphics = this.selectedEntityFolder.addFolder({
+                title: 'Graphics'
+            });
+
+            graphics.addInput(graphicsComponent, "anchor");
+            graphics.addInput(graphicsComponent, "opacity", {
+                min: 0,
+                max: 1,
+                step: 0.05
+            });
+            graphics.addInput(graphicsComponent, "visible");
+
+            // woof a lot of effort to do this
+            const dropdown: { text: string, value: number }[] = [];
+            const allGraphics: Graphic[] = [];
+            const currentGfx = graphicsComponent.current.map(c => c.graphic);
+            const namedGfx: Graphic[] = [];
+            let gfxIndex = 0;
+            for (let key in graphicsComponent.graphics) {
+                dropdown.push({ text: key, value: gfxIndex++ });
+                allGraphics.push(graphicsComponent.graphics[key]);
+
+                namedGfx.push(graphicsComponent.graphics[key]);
+            }
+            let anonIndex = 0;
+            for (let graphic of currentGfx) {
+                if (namedGfx.indexOf(graphic) === -1) {
+                    dropdown.push({ text: `anonymous${anonIndex++}`, value: gfxIndex });
+                    allGraphics.push(graphic);
+                }
+            }
+
+            console.log(dropdown);
+            const graphicsList = graphics.addBlade({
+                view: 'list',
+                label: 'graphics',
+                options: dropdown,
+                value: allGraphics.indexOf(graphicsComponent.current[0].graphic)
+            }) as ListApi<number>;
+            graphicsList.on('change', ev => {
+                graphicsComponent.use(allGraphics[ev.value]);
+            });
+        }
+
+        const colliderComponent = this.selectedEntity.get(ColliderComponent);
+        const bodyComponent = this.selectedEntity.get(BodyComponent);
+        if (colliderComponent) {
+
+            const collider = this.selectedEntityFolder.addFolder({
+                title: 'Collider & Body'
+            });
+            collider.addBlade({
+                view: 'text',
+                label: 'type',
+                value: (colliderComponent.get() as any).constructor.name,
+                parse: (v) => String(v)
+            });
+            if (bodyComponent) {
+
+                const collisionTypes = collider.addBlade({
+                    view: 'list',
+                    label: 'collisionType',
+                    options: [CollisionType.Active, CollisionType.Fixed, CollisionType.Passive, CollisionType.PreventCollision].map(
+                        c => ({
+                            text: c,
+                            value: c
+                        })),
+                    value: bodyComponent.collisionType
+                }) as ListApi<CollisionType>;
+                collisionTypes.on("change", ev => {
+                    bodyComponent.collisionType = ev.value;
+                });
+
+                const collisionGroups = collider.addBlade({
+                    view: 'list',
+                    label: 'collisionGroup',
+                    options: [CollisionGroup.All, ...CollisionGroupManager.groups].map(c => ({
+                        text: c.name,
+                        value: c
+                    })),
+                    value: bodyComponent.group
+                }) as ListApi<any>;
+                collisionGroups.on("change", ev => {
+                    bodyComponent.group = ev.value;
+                });
+            }
+        }
+
+        this.selectedEntityFolder.disabled = false;
+    }
+
+    public addListeners() {
         const game = this.engine;
         game.canvas.addEventListener('click', () => {
-            if (this.highlighted[0] !== -1) {
-                this.selectedEntityId = this.highlighted[0];
-                this.selectedEntity = game.currentScene.world.entityManager.getById(this.highlighted[0]) as Actor;
-                console.log('Selected', this.selectedEntity);
-                if (this.selectedEntityFolder) {
-                    this.selectedEntityFolder.dispose();
-                    this.selectedEntityFolder = this.selectedEntityTab.addFolder({
-                        title: 'Selected',
-                        // disabled: true
-                    });
-                }
-                this.selectedEntityFolder.addBlade({ view: 'text', label: 'id', value: this.selectedEntity.id.toString(), parse: v => String(v) });
-                this.selectedEntityFolder.addInput(this.selectedEntity, 'name');
-                if (this.selectedEntity.color) {
-                    this.selectedEntityFolder.addInput(this.selectedEntity as Actor, 'color').on("change", ev => {
-                        this.selectedEntity.color = new Color(ev.value.r, ev.value.g, ev.value.b, ev.value.a)
-                    });
-                }
-                this.selectedEntityFolder.addBlade({
-                    view: 'text',
-                    label: 'parent',
-                    value: this.selectedEntity.parent ? `(${this.selectedEntity.parent?.id}) ${this.selectedEntity.parent?.name}` : 'none',
-                    parse: (v) => String(v)
-                });
-                this.selectedEntityFolder.addBlade({
-                    view: 'list',
-                    label: 'children',
-                    options: this.selectedEntity.children.map(c => ({ text: `(${c.id}) ${c.name}`, value: c.id })),
-                    value: this.selectedEntity.children.length ? this.selectedEntity.children[0].id : 'none',
-                });
-
-                const transformComponent = this.selectedEntity.get(TransformComponent)
-                if (transformComponent) {
-
-                    const transform = this.selectedEntityFolder.addFolder({
-                        title: 'Transform'
-                    });
-                    const coordPlane = transform.addBlade({
-                        view: 'list',
-                        label: 'coord plane',
-                        options: [CoordPlane.World, CoordPlane.Screen].map(c => ({text: c, value: c})),
-                        value: transformComponent.coordPlane
-                    }) as ListApi<CoordPlane>;
-                    coordPlane.on("change", ev => transformComponent.coordPlane = ev.value);
-
-                    const tx = transform.addInput(transformComponent, "pos");
-                    const rot = transform.addInput(transformComponent, "rotation", {
-                        min: 0,
-                        max: 2 * Math.PI,
-                    });
-                    const scale = transform.addInput(transformComponent, 'scale');
-                    transform.addSeparator();
-
-                    const globalTx = transform.addInput(transformComponent, "globalPos", { label: "global pos" })
-                    const globalRot = transform.addInput(transformComponent, "globalRotation", {
-                        label: "global rot",
-                        min: 0,
-                        max: 2 * Math.PI,
-                    });
-                    const globalScale = transform.addInput(transformComponent, 'globalScale', { label: "global pos" });
-
-                    globalTx.on("change", () => tx.refresh());
-                    tx.on("change", () => globalTx.refresh());
-
-                    globalRot.on("change", () => rot.refresh());
-                    rot.on("change", () => globalRot.refresh());
-
-                    globalScale.on("change", () => scale.refresh());
-                    scale.on("change", () => globalScale.refresh());
-                }
-
-                const motionComponent = this.selectedEntity.get(MotionComponent);
-                if (motionComponent) {
-
-                    const motion = this.selectedEntityFolder.addFolder({
-                        title: 'Motion'
-                    });
-                    motion.addInput(motionComponent, "vel");
-                    motion.addInput(motionComponent, "acc");
-                    motion.addInput(motionComponent, "angularVelocity", {
-                        step: .1
-                    });
-                    motion.addInput(motionComponent, "scaleFactor");
-                    motion.addInput(motionComponent, "inertia");
-                }
-
-                const graphicsComponent = this.selectedEntity.get(GraphicsComponent);
-                if (graphicsComponent) {
-
-                    const graphics = this.selectedEntityFolder.addFolder({
-                        title: 'Graphics'
-                    });
-
-                    graphics.addInput(graphicsComponent, "anchor");
-                    graphics.addInput(graphicsComponent, "opacity", {
-                        min: 0,
-                        max: 1,
-                        step: 0.05
-                    });
-                    graphics.addInput(graphicsComponent, "visible");
-
-                    // woof a lot of effort to do this
-                    const dropdown: {text: string, value: number}[] = [];
-                    const allGraphics: Graphic[] = [];
-                    const currentGfx = graphicsComponent.current.map(c => c.graphic);
-                    const namedGfx: Graphic[] = [];
-                    let gfxIndex = 0;
-                    for (let key in graphicsComponent.graphics) {
-                        dropdown.push({text: key, value: gfxIndex++});
-                        allGraphics.push(graphicsComponent.graphics[key]);
-
-                        namedGfx.push(graphicsComponent.graphics[key]);
-                    }
-                    let anonIndex = 0;
-                    for (let graphic of currentGfx) {
-                        if (namedGfx.indexOf(graphic) === -1) {
-                            dropdown.push({text: `anonymous${anonIndex++}`, value: gfxIndex});
-                            allGraphics.push(graphic);
-                        }
-                    }
-
-                    console.log(dropdown);
-                    const graphicsList = graphics.addBlade({
-                        view: 'list',
-                        label: 'graphics',
-                        options: dropdown,
-                        value: allGraphics.indexOf(graphicsComponent.current[0].graphic)
-                    }) as ListApi<number>;
-                    graphicsList.on('change', ev => {
-                        graphicsComponent.use(allGraphics[ev.value]);
-                    });
-                }
-
-                const colliderComponent = this.selectedEntity.get(ColliderComponent);
-                const bodyComponent = this.selectedEntity.get(BodyComponent);
-                if (colliderComponent) {
-
-                    const collider = this.selectedEntityFolder.addFolder({
-                        title: 'Collider & Body'
-                    });
-                    collider.addBlade({
-                        view: 'text',
-                        label: 'type',
-                        value: (colliderComponent.get() as any).constructor.name,
-                        parse: (v) => String(v)
-                    });
-                    if (bodyComponent) {
-
-                        const collisionTypes = collider.addBlade({
-                            view: 'list',
-                            label: 'collisionType',
-                            options: [CollisionType.Active, CollisionType.Fixed, CollisionType.Passive, CollisionType.PreventCollision].map(
-                                c => ({
-                                    text: c,
-                                    value: c
-                                })),
-                                value: bodyComponent.collisionType
-                            }) as ListApi<CollisionType>;
-                        collisionTypes.on("change", ev => {
-                            bodyComponent.collisionType = ev.value;
-                        });
-                        
-                        const collisionGroups = collider.addBlade({
-                            view: 'list',
-                            label: 'collisionGroup',
-                            options: [CollisionGroup.All, ...CollisionGroupManager.groups].map(c => ({
-                                text: c.name,
-                                value: c
-                            })),
-                            value: bodyComponent.group
-                        }) as ListApi<any>;
-                        collisionGroups.on("change", ev => {
-                            bodyComponent.group = ev.value;
-                        });
-                    }
-                }
-
-                this.selectedEntityFolder.disabled = false;
+            if (this.highlightedEntities[0] !== -1) {
+                this.selectEntityById(this.highlightedEntities[0]);
             }
-            // selected.disabled = true;
         });
     }
 
@@ -471,7 +481,7 @@ export class DevTool {
             stopGameButton.disabled = false;
             startGameButton.disabled = true;
         });
-        
+
     }
 
     public buildPhysics() {
@@ -494,7 +504,7 @@ export class DevTool {
         });
         physics.addButton({
             title: 'Use Realistic'
-        }).on('click', () => { 
+        }).on('click', () => {
             Physics.useRealisticPhysics();
             physicsSettings.collisionResolutionStrategy = Physics.collisionResolutionStrategy;
             solverInput.refresh();
