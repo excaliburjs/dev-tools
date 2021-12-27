@@ -582,7 +582,7 @@ export class DevTool {
 
 
         for (let timer of this.engine.currentScene.timers) {
-            let status = (timer.repeats && timer.maxNumberOfRepeats === -1) ? 'repeats': ((timer as any)._numberOfTicks + 1) + ' of ' + timer.maxNumberOfRepeats;
+            let status = (timer.repeats && timer.maxNumberOfRepeats === -1) ? 'repeats': ((timer as any)._numberOfTicks + 1) + ' of ' + (timer.maxNumberOfRepeats === -1 ? 1 : timer.maxNumberOfRepeats);
             if (!timer.isRunning) {
                 status = "stopped";
             }
