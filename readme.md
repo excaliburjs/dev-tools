@@ -19,8 +19,3 @@ Install node & npm
 
 * `npm install`
 * `npm run start`
-
-
-### TODO Currently Unspported
-
-- [ ] Support timers

@@ -1,4 +1,4 @@
-import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text, ParticleEmitter } from "excalibur";
+import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text, ParticleEmitter, Timer } from "excalibur";
 import { DevTool } from "./dev-tools";
 
 const game = new Engine({
@@ -70,6 +70,21 @@ const actorWithOnlyPosition = new Actor({
     pos: vec(400, 400)
 });
 game.add(actorWithOnlyPosition);
+
+const timer1 = new Timer({
+    interval: 3000,
+    repeats: true
+});
+game.add(timer1);
+timer1.start();
+
+const timer2 = new Timer({
+    interval: 10000,
+    numberOfRepeats: 3,
+    repeats: true
+});
+game.add(timer2);
+timer2.start();
 
 const otherScene = new Scene();
 game.addScene("other scene", otherScene);

@@ -21,6 +21,7 @@ export class DevTool {
     selectedEntityFolder: FolderApi;
     screenTab: TabPageApi;
     cameraTab: TabPageApi;
+    timerTab: TabPageApi;
     clockTab: TabPageApi;
     physicsTab: TabPageApi;
     debugTab: TabPageApi;
@@ -44,6 +45,7 @@ export class DevTool {
                 { title: 'Screen' },
                 { title: 'Camera' },
                 { title: 'Clock' },
+                { title: 'Timers' },
                 { title: 'Physics' },
                 { title: 'Settings' }
             ]
@@ -53,8 +55,9 @@ export class DevTool {
         this.screenTab = this.tabs.pages[1];
         this.cameraTab = this.tabs.pages[2];
         this.clockTab = this.tabs.pages[3];
-        this.physicsTab = this.tabs.pages[4];
-        this.debugTab = this.tabs.pages[5];
+        this.timerTab = this.tabs.pages[4];
+        this.physicsTab = this.tabs.pages[5];
+        this.debugTab = this.tabs.pages[6];
 
         this._installPickerSystemIfNeeded(engine.currentScene);
 
@@ -68,6 +71,7 @@ export class DevTool {
         this._buildScreenTab();
         this._buildCameraTab();
         this._buildClockTab();
+        this._buildTimersTab();
         this._buildPhysicsTab();
         this._buildDebugSettingsTab();
 
@@ -160,6 +164,8 @@ export class DevTool {
                 index: 1
             });
         }
+        // Update timers
+        this._buildTimersTab();
     }
 
 
@@ -561,6 +567,35 @@ export class DevTool {
             startGameButton.disabled = true;
         });
 
+    }
+
+    private _timersFolder: FolderApi;
+    private _buildTimersTab() {
+        const timers = this.timerTab;
+
+        if (this._timersFolder) {
+            this._timersFolder.dispose();
+        }
+        this._timersFolder = this.timerTab.addFolder({
+            title: "Timers"
+        });
+
+
+        for (let timer of this.engine.currentScene.timers) {
+            let status = (timer.repeats && timer.maxNumberOfRepeats === -1) ? 'repeats': ((timer as any)._numberOfTicks + 1) + ' of ' + timer.maxNumberOfRepeats;
+            if (!timer.isRunning) {
+                status = "stopped";
+            }
+            if (timer.complete) {
+                status = "complete";
+            }
+            this._timersFolder.addBlade({
+                view: 'text',
+                label: `timer(${timer.id})`,
+                value:`${status} next(${timer.timeToNextAction.toFixed(0)}ms)`,
+                parse: v => String(v)
+            });
+        }
     }
 
     private _buildPhysicsTab() {
