@@ -1,16 +1,17 @@
-import { Actor, BodyComponent, ColliderComponent, CollisionGroup, CollisionGroupManager, CollisionType, Color, CoordPlane, Engine, Graphic, GraphicsComponent, MotionComponent, Physics, PointerSystem, Scene, ScreenDimension, TestClock, TransformComponent, Vector } from "excalibur";
+import * as ex from "excalibur";
 import { BladeApi, FolderApi, ListApi, Pane, SliderApi, TabApi, TabPageApi } from "tweakpane";
+import { PickerSystem } from './picker-system'
 
 export class DevTool {
     public pane: Pane
     public tabs: TabApi;
-    public pointerSystem: PointerSystem;
+    public pickerSystem: PickerSystem;
     pointerPos: { x: number, y: number } = { x: 0, y: 0 };
     highlightedEntities: number[] = [-1];
-    selectedEntity: Actor | null = null;
+    selectedEntity: ex.Actor | null = null;
     selectedEntityId: number = -1;
-    currentResolution: ScreenDimension;
-    currentViewport: ScreenDimension;
+    currentResolution: ex.ScreenDimension;
+    currentViewport: ex.ScreenDimension;
     resolutionText: BladeApi<any>;
     viewportText: BladeApi<any>;
     screenFolder: FolderApi;
@@ -25,7 +26,7 @@ export class DevTool {
     debugTab: TabPageApi;
     pointerPosInput: any;
 
-    constructor(public engine: Engine) {
+    constructor(public engine: ex.Engine) {
         this.pane = new Pane({
             title: 'Excalibur Dev Tools',
             expanded: true
@@ -54,10 +55,10 @@ export class DevTool {
         this.physicsTab = this.tabs.pages[4];
         this.debugTab = this.tabs.pages[5];
 
-        this.pointerSystem = engine.currentScene.world.systemManager.get(PointerSystem);
-        this.pointerSystem.overrideUseGraphicsBounds = true;
-        this.pointerSystem.overrideUseColliderShape = true;
+        this._installPickerSystemIfNeeded(engine.currentScene);
+
         engine.debug.transform.showPosition = true;
+        engine.debug.entity.showName = true;
         this.selectedEntityFolder = this.selectedEntityTab.addFolder({
             title: 'Selected',
         });
@@ -74,6 +75,14 @@ export class DevTool {
         }, 30)
 
         this.addListeners();
+    }
+
+    private _installPickerSystemIfNeeded(scene: ex.Scene) {
+        this.pickerSystem = scene.world.systemManager.get(PickerSystem);
+        if (!this.pickerSystem){
+            this.pickerSystem = new PickerSystem()
+            scene.world.systemManager.addSystem(this.pickerSystem)
+        }
     }
 
     private _buildMain() {
@@ -107,6 +116,7 @@ export class DevTool {
 
         scenePicker.on('change', ev => {
             this.engine.goToScene(ev.value);
+            this._installPickerSystemIfNeeded(this.engine.currentScene);
             numberEntitiesBlade.dispose();
             numberEntitiesBlade = this.pane.addBlade({
                 view: 'text',
@@ -145,7 +155,7 @@ export class DevTool {
         this.pointerPosInput.refresh();
 
         // Updated Selection
-        const entityIds = [...this.pointerSystem.lastFrameEntityToPointers.keys(), ...this.pointerSystem.currentFrameEntityToPointers.keys()];
+        const entityIds = [...this.pickerSystem.lastFrameEntityToPointers.keys(), ...this.pickerSystem.currentFrameEntityToPointers.keys()];
         if (entityIds.length === 0) {
             entityIds.push(-1); // nothing selected
             entityIds.push(this.selectedEntityId);
@@ -182,7 +192,7 @@ export class DevTool {
     public selectEntityById(id: number) {
         const game = this.engine;
         this.selectedEntityId = id;
-        this.selectedEntity = game.currentScene.world.entityManager.getById(id) as Actor;
+        this.selectedEntity = game.currentScene.world.entityManager.getById(id) as ex.Actor;
         if (this.selectedEntityFolder) {
             this.selectedEntityFolder.dispose();
             this.selectedEntityFolder = this.selectedEntityTab.addFolder({
@@ -200,8 +210,8 @@ export class DevTool {
         });
 
         if (this.selectedEntity.color) {
-            this.selectedEntityFolder.addInput(this.selectedEntity as Actor, 'color').on("change", ev => {
-                this.selectedEntity.color = new Color(ev.value.r, ev.value.g, ev.value.b, ev.value.a)
+            this.selectedEntityFolder.addInput(this.selectedEntity as ex.Actor, 'color').on("change", ev => {
+                this.selectedEntity.color = new ex.Color(ev.value.r, ev.value.g, ev.value.b, ev.value.a)
             });
         }
         this.selectedEntityFolder.addBlade({
@@ -219,7 +229,7 @@ export class DevTool {
 
 
 
-        const transformComponent = this.selectedEntity.get(TransformComponent)
+        const transformComponent = this.selectedEntity.get(ex.TransformComponent)
         if (transformComponent) {
 
             const transform = this.selectedEntityFolder.addFolder({
@@ -228,9 +238,9 @@ export class DevTool {
             const coordPlane = transform.addBlade({
                 view: 'list',
                 label: 'coord plane',
-                options: [CoordPlane.World, CoordPlane.Screen].map(c => ({ text: c, value: c })),
+                options: [ex.CoordPlane.World, ex.CoordPlane.Screen].map(c => ({ text: c, value: c })),
                 value: transformComponent.coordPlane
-            }) as ListApi<CoordPlane>;
+            }) as ListApi<ex.CoordPlane>;
             coordPlane.on("change", ev => transformComponent.coordPlane = ev.value);
 
             const tx = transform.addInput(transformComponent, "pos");
@@ -259,7 +269,7 @@ export class DevTool {
             scale.on("change", () => globalScale.refresh());
         }
 
-        const motionComponent = this.selectedEntity.get(MotionComponent);
+        const motionComponent = this.selectedEntity.get(ex.MotionComponent);
         if (motionComponent) {
 
             const motion = this.selectedEntityFolder.addFolder({
@@ -274,7 +284,7 @@ export class DevTool {
             motion.addInput(motionComponent, "inertia");
         }
 
-        const graphicsComponent = this.selectedEntity.get(GraphicsComponent);
+        const graphicsComponent = this.selectedEntity.get(ex.GraphicsComponent);
         if (graphicsComponent) {
 
             const graphics = this.selectedEntityFolder.addFolder({
@@ -291,9 +301,9 @@ export class DevTool {
 
             // woof a lot of effort to do this
             const dropdown: { text: string, value: number }[] = [];
-            const allGraphics: Graphic[] = [];
+            const allGraphics: ex.Graphic[] = [];
             const currentGfx = graphicsComponent.current.map(c => c.graphic);
-            const namedGfx: Graphic[] = [];
+            const namedGfx: ex.Graphic[] = [];
             let gfxIndex = 0;
             for (let key in graphicsComponent.graphics) {
                 dropdown.push({ text: key, value: gfxIndex++ });
@@ -314,15 +324,15 @@ export class DevTool {
                 view: 'list',
                 label: 'graphics',
                 options: dropdown,
-                value: allGraphics.indexOf(graphicsComponent.current[0].graphic)
+                value: allGraphics.indexOf(graphicsComponent.current[0]?.graphic)
             }) as ListApi<number>;
             graphicsList.on('change', ev => {
                 graphicsComponent.use(allGraphics[ev.value]);
             });
         }
 
-        const colliderComponent = this.selectedEntity.get(ColliderComponent);
-        const bodyComponent = this.selectedEntity.get(BodyComponent);
+        const colliderComponent = this.selectedEntity.get(ex.ColliderComponent);
+        const bodyComponent = this.selectedEntity.get(ex.BodyComponent);
         if (colliderComponent) {
 
             const collider = this.selectedEntityFolder.addFolder({
@@ -331,7 +341,7 @@ export class DevTool {
             collider.addBlade({
                 view: 'text',
                 label: 'type',
-                value: (colliderComponent.get() as any).constructor.name,
+                value: (colliderComponent.get() as any)?.constructor.name ?? 'none',
                 parse: (v) => String(v)
             });
             if (bodyComponent) {
@@ -339,13 +349,13 @@ export class DevTool {
                 const collisionTypes = collider.addBlade({
                     view: 'list',
                     label: 'collisionType',
-                    options: [CollisionType.Active, CollisionType.Fixed, CollisionType.Passive, CollisionType.PreventCollision].map(
+                    options: [ex.CollisionType.Active, ex.CollisionType.Fixed, ex.CollisionType.Passive, ex.CollisionType.PreventCollision].map(
                         c => ({
                             text: c,
                             value: c
                         })),
                     value: bodyComponent.collisionType
-                }) as ListApi<CollisionType>;
+                }) as ListApi<ex.CollisionType>;
                 collisionTypes.on("change", ev => {
                     bodyComponent.collisionType = ev.value;
                 });
@@ -353,7 +363,7 @@ export class DevTool {
                 const collisionGroups = collider.addBlade({
                     view: 'list',
                     label: 'collisionGroup',
-                    options: [CollisionGroup.All, ...CollisionGroupManager.groups].map(c => ({
+                    options: [ex.CollisionGroup.All, ...ex.CollisionGroupManager.groups].map(c => ({
                         text: c.name,
                         value: c
                     })),
@@ -424,13 +434,13 @@ export class DevTool {
             title: 'Clock'
         });
 
-        let usingTestClock = this.engine.clock instanceof TestClock;
+        let usingTestClock = this.engine.clock instanceof ex.TestClock;
         let stepMs = 16;
         const step = clock.addButton({
             title: 'step',
             disabled: !usingTestClock,
             index: 2
-        }).on('click', () => (this.engine.clock as TestClock).step(stepMs));
+        }).on('click', () => (this.engine.clock as ex.TestClock).step(stepMs));
         const stepSlider = clock.addBlade({
             view: 'slider',
             label: 'step (ms)',
@@ -487,40 +497,40 @@ export class DevTool {
     public buildPhysics() {
         const physics = this.physicsTab;
 
-        const physicsSettings: typeof Physics = {} as any
+        const physicsSettings: typeof ex.Physics = {} as any
 
-        for (let key in Physics) {
-            physicsSettings[key] = Physics[key];
+        for (let key in ex.Physics) {
+            physicsSettings[key] = ex.Physics[key];
         }
-        physics.addInput(physicsSettings, "enabled").on('change', ev => Physics.enabled = ev.value);
+        physics.addInput(physicsSettings, "enabled").on('change', ev => ex.Physics.enabled = ev.value);
         physics.addInput(physicsSettings, "acc");
         const solverInput = physics.addInput(physicsSettings, "collisionResolutionStrategy");
         physics.addButton({
             title: 'Use Arcade'
         }).on('click', () => {
-            Physics.useArcadePhysics();
-            physicsSettings.collisionResolutionStrategy = Physics.collisionResolutionStrategy;
+            ex.Physics.useArcadePhysics();
+            physicsSettings.collisionResolutionStrategy = ex.Physics.collisionResolutionStrategy;
             solverInput.refresh();
         });
         physics.addButton({
             title: 'Use Realistic'
         }).on('click', () => {
-            Physics.useRealisticPhysics();
-            physicsSettings.collisionResolutionStrategy = Physics.collisionResolutionStrategy;
+            ex.Physics.useRealisticPhysics();
+            physicsSettings.collisionResolutionStrategy = ex.Physics.collisionResolutionStrategy;
             solverInput.refresh();
         });
         physics.addInput(physicsSettings, "positionIterations", {
             min: 1,
             max: 30,
             step: 1
-        }).on("change", ev => Physics.positionIterations = ev.value);
+        }).on("change", ev => ex.Physics.positionIterations = ev.value);
         physics.addInput(physicsSettings, "velocityIterations", {
             min: 1,
             max: 30,
             step: 1
-        }).on('change', ev => Physics.velocityIterations = ev.value);
+        }).on('change', ev => ex.Physics.velocityIterations = ev.value);
         // physics.addInput(Physics, "acc");
-        physics.addInput(physicsSettings, "checkForFastBodies").on("change", ev => Physics.checkForFastBodies = ev.value);
+        physics.addInput(physicsSettings, "checkForFastBodies").on("change", ev => ex.Physics.checkForFastBodies = ev.value);
     }
 
     public buildDebugSettingsTab() {

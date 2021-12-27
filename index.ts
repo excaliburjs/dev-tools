@@ -65,7 +65,26 @@ const label2 = new Label({
 });
 game.add(label2);
 
-game.addScene("other scene", new Scene());
+const actorWithOnlyPosition = new Actor({
+    name: 'only position',
+    pos: vec(400, 400)
+});
+game.add(actorWithOnlyPosition);
+
+const otherScene = new Scene();
+game.addScene("other scene", otherScene);
+otherScene.add(new Actor({
+    name: "Actor in another scene",
+    pos: vec(100, 100),
+    width: 100,
+    height: 100,
+    color: Color.Red
+}));
+
+otherScene.add(new Actor({
+    name: "Actor in another scene without things",
+    pos: vec(200, 200),
+}));
 
 game.start();
 
