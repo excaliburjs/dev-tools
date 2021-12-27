@@ -3,8 +3,8 @@ const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPl
 
 module.exports = {
     entry: {
-        'excalibur-dev-tools': './dev-tools.ts',
-        'excalibur-dev-tools.min': './dev-tools.ts',
+        'dev-tools': './dev-tools.ts',
+        'dev-tools.min': './dev-tools.ts',
     },
     module: {
         rules: [
