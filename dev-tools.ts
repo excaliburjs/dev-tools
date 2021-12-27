@@ -48,6 +48,7 @@ export class DevTool {
                 { title: 'Settings' }
             ]
         });
+
         this.selectedEntityTab = this.tabs.pages[0];
         this.screenTab = this.tabs.pages[1];
         this.cameraTab = this.tabs.pages[2];
@@ -77,9 +78,90 @@ export class DevTool {
         this.addListeners();
     }
 
+    /**
+     * Add any event listeners relevant to the devtool
+     */
+    public addListeners() {
+        const game = this.engine;
+        game.canvas.addEventListener('click', () => {
+            if (this.highlightedEntities[0] !== -1) {
+                this.selectEntityById(this.highlightedEntities[0]);
+            }
+        });
+    }
+
+    public selectEntityById(id: number) {
+        const game = this.engine;
+        this.selectedEntityId = id;
+        this.selectedEntity = game.currentScene.world.entityManager.getById(id) as ex.Actor;
+        this._buildEntityUI(this.selectedEntity);
+
+        const transformComponent = this.selectedEntity.get(ex.TransformComponent)
+        this._buildTransformUI(transformComponent);
+
+        const motionComponent = this.selectedEntity.get(ex.MotionComponent);
+        this._buildMotionUI(motionComponent);
+
+        const graphicsComponent = this.selectedEntity.get(ex.GraphicsComponent);
+        this._buildGraphicsUI(graphicsComponent);
+
+        const colliderComponent = this.selectedEntity.get(ex.ColliderComponent);
+        const bodyComponent = this.selectedEntity.get(ex.BodyComponent);
+        this._buildColliderUI(colliderComponent, bodyComponent);
+    }
+
+    /**
+     * `update()` is called periodically over time
+     * @param devtool 
+     */
+    public update(devtool: DevTool) {
+        const game = devtool.engine;
+        // Current pointer pos
+        const pointerPos = game.input.pointers.primary.lastWorldPos;
+        this.pointerPos.x = pointerPos.x;
+        this.pointerPos.y = pointerPos.y;
+        this.pointerPosInput.refresh();
+
+        // Updated Selection
+        const entityIds = [...this.pickerSystem.lastFrameEntityToPointers.keys(), ...this.pickerSystem.currentFrameEntityToPointers.keys()];
+        if (entityIds.length === 0) {
+            entityIds.push(-1); // nothing selected
+            entityIds.push(this.selectedEntityId);
+        }
+        this.highlightedEntities = entityIds;
+        game.debug.filter.useFilter = true;
+        game.debug.filter.ids = entityIds;
+
+        // Update Screen if needed
+        if (this.currentResolution.width !== game.screen.resolution.width ||
+            this.currentResolution.height !== game.screen.resolution.height ||
+            this.currentViewport.width !== game.screen.viewport.width ||
+            this.currentViewport.height !== game.screen.viewport.height) {
+
+            this.resolutionText.dispose();
+            this.viewportText.dispose();
+            this.resolutionText = this.screenFolder.addBlade({
+                view: 'text',
+                label: 'resolution',
+                value: `(${game.screen.resolution.width}x${game.screen.resolution.height})`,
+                parse: v => String(v),
+                index: 0
+            });
+            this.viewportText = this.screenFolder.addBlade({
+                view: 'text',
+                label: 'viewport',
+                value: `(${game.screen.viewport.width.toFixed(0)}x${game.screen.viewport.height.toFixed(0)})`,
+                parse: v => String(v),
+                index: 1
+            });
+        }
+    }
+
+
+
     private _installPickerSystemIfNeeded(scene: ex.Scene) {
         this.pickerSystem = scene.world.systemManager.get(PickerSystem);
-        if (!this.pickerSystem){
+        if (!this.pickerSystem) {
             this.pickerSystem = new PickerSystem()
             scene.world.systemManager.addSystem(this.pickerSystem)
         }
@@ -145,194 +227,43 @@ export class DevTool {
 
     }
 
-    /**
-     * `update()` is called periodically over time
-     * @param devtool 
-     */
-    public update(devtool: DevTool) {
-        const game = devtool.engine;
-        // Current pointer pos
-        const pointerPos = game.input.pointers.primary.lastWorldPos;
-        this.pointerPos.x = pointerPos.x;
-        this.pointerPos.y = pointerPos.y;
-        this.pointerPosInput.refresh();
-
-        // Updated Selection
-        const entityIds = [...this.pickerSystem.lastFrameEntityToPointers.keys(), ...this.pickerSystem.currentFrameEntityToPointers.keys()];
-        if (entityIds.length === 0) {
-            entityIds.push(-1); // nothing selected
-            entityIds.push(this.selectedEntityId);
-        }
-        this.highlightedEntities = entityIds;
-        game.debug.filter.useFilter = true;
-        game.debug.filter.ids = entityIds;
-
-        // Update Screen if needed
-        if (this.currentResolution.width !== game.screen.resolution.width ||
-            this.currentResolution.height !== game.screen.resolution.height ||
-            this.currentViewport.width !== game.screen.viewport.width ||
-            this.currentViewport.height !== game.screen.viewport.height) {
-
-            this.resolutionText.dispose();
-            this.viewportText.dispose();
-            this.resolutionText = this.screenFolder.addBlade({
-                view: 'text',
-                label: 'resolution',
-                value: `(${game.screen.resolution.width}x${game.screen.resolution.height})`,
-                parse: v => String(v),
-                index: 0
-            });
-            this.viewportText = this.screenFolder.addBlade({
-                view: 'text',
-                label: 'viewport',
-                value: `(${game.screen.viewport.width.toFixed(0)}x${game.screen.viewport.height.toFixed(0)})`,
-                parse: v => String(v),
-                index: 1
-            });
-        }
-    }
-
-    public selectEntityById(id: number) {
-        const game = this.engine;
-        this.selectedEntityId = id;
-        this.selectedEntity = game.currentScene.world.entityManager.getById(id) as ex.Actor;
+    private _buildEntityUI(entity: ex.Entity) {
         if (this.selectedEntityFolder) {
             this.selectedEntityFolder.dispose();
             this.selectedEntityFolder = this.selectedEntityTab.addFolder({
                 title: 'Selected'
             });
         }
-        this.selectedEntityFolder.addBlade({ view: 'text', label: 'id', value: this.selectedEntity.id.toString(), parse: v => String(v) });
+        this.selectedEntityFolder.addBlade({ view: 'text', label: 'id', value: entity.id.toString(), parse: v => String(v) });
         this.selectedEntityFolder.addInput(this.selectedEntity, 'name');
 
         this.selectedEntityFolder.addBlade({
             view: 'text',
             label: 'tags',
-            value: this.selectedEntity.tags.join(',') || 'none',
+            value: entity.tags.join(',') || 'none',
             parse: v => String(v)
         });
 
-        if (this.selectedEntity.color) {
+        if (entity instanceof ex.Actor && entity.color) {
             this.selectedEntityFolder.addInput(this.selectedEntity as ex.Actor, 'color').on("change", ev => {
-                this.selectedEntity.color = new ex.Color(ev.value.r, ev.value.g, ev.value.b, ev.value.a)
+                entity.color = new ex.Color(ev.value.r, ev.value.g, ev.value.b, ev.value.a);
             });
         }
         this.selectedEntityFolder.addBlade({
             view: 'text',
             label: 'parent',
-            value: this.selectedEntity.parent ? `(${this.selectedEntity.parent?.id}) ${this.selectedEntity.parent?.name}` : 'none',
+            value: entity.parent ? `(${entity.parent?.id}) ${entity.parent?.name}` : 'none',
             parse: (v) => String(v)
         });
         this.selectedEntityFolder.addBlade({
             view: 'list',
             label: 'children',
-            options: this.selectedEntity.children.map(c => ({ text: `(${c.id}) ${c.name}`, value: c.id })),
-            value: this.selectedEntity.children.length ? this.selectedEntity.children[0].id : 'none',
+            options: entity.children.map(c => ({ text: `(${c.id}) ${c.name}`, value: c.id })),
+            value: entity.children.length ? entity.children[0].id : 'none',
         });
+    }
 
-
-
-        const transformComponent = this.selectedEntity.get(ex.TransformComponent)
-        if (transformComponent) {
-            const transform = this.selectedEntityFolder.addFolder({
-                title: 'Transform'
-            });
-            const coordPlane = transform.addBlade({
-                view: 'list',
-                label: 'coord plane',
-                options: [ex.CoordPlane.World, ex.CoordPlane.Screen].map(c => ({ text: c, value: c })),
-                value: transformComponent.coordPlane
-            }) as ListApi<ex.CoordPlane>;
-            coordPlane.on("change", ev => transformComponent.coordPlane = ev.value);
-
-            const tx = transform.addInput(transformComponent, "pos");
-            const rot = transform.addInput(transformComponent, "rotation", {
-                min: 0,
-                max: 2 * Math.PI,
-            });
-            const scale = transform.addInput(transformComponent, 'scale');
-            transform.addSeparator();
-
-            const globalTx = transform.addInput(transformComponent, "globalPos", { label: "global pos" })
-            const globalRot = transform.addInput(transformComponent, "globalRotation", {
-                label: "global rot",
-                min: 0,
-                max: 2 * Math.PI,
-            });
-            const globalScale = transform.addInput(transformComponent, 'globalScale', { label: "global pos" });
-
-            globalTx.on("change", () => tx.refresh());
-            tx.on("change", () => globalTx.refresh());
-
-            globalRot.on("change", () => rot.refresh());
-            rot.on("change", () => globalRot.refresh());
-
-            globalScale.on("change", () => scale.refresh());
-            scale.on("change", () => globalScale.refresh());
-        }
-
-        const motionComponent = this.selectedEntity.get(ex.MotionComponent);
-        if (motionComponent) {
-            const motion = this.selectedEntityFolder.addFolder({
-                title: 'Motion'
-            });
-            motion.addInput(motionComponent, "vel");
-            motion.addInput(motionComponent, "acc");
-            motion.addInput(motionComponent, "angularVelocity", {
-                step: .1
-            });
-            motion.addInput(motionComponent, "scaleFactor");
-            motion.addInput(motionComponent, "inertia");
-        }
-
-        const graphicsComponent = this.selectedEntity.get(ex.GraphicsComponent);
-        if (graphicsComponent) {
-
-            const graphics = this.selectedEntityFolder.addFolder({
-                title: 'Graphics'
-            });
-
-            graphics.addInput(graphicsComponent, "anchor");
-            graphics.addInput(graphicsComponent, "opacity", {
-                min: 0,
-                max: 1,
-                step: 0.05
-            });
-            graphics.addInput(graphicsComponent, "visible");
-
-            // woof a lot of effort to do this
-            const dropdown: { text: string, value: number }[] = [];
-            const allGraphics: ex.Graphic[] = [];
-            const currentGfx = graphicsComponent.current.map(c => c.graphic);
-            const namedGfx: ex.Graphic[] = [];
-            let gfxIndex = 0;
-            for (let key in graphicsComponent.graphics) {
-                dropdown.push({ text: key, value: gfxIndex++ });
-                allGraphics.push(graphicsComponent.graphics[key]);
-
-                namedGfx.push(graphicsComponent.graphics[key]);
-            }
-            let anonIndex = 0;
-            for (let graphic of currentGfx) {
-                if (namedGfx.indexOf(graphic) === -1) {
-                    dropdown.push({ text: `anonymous${anonIndex++}`, value: gfxIndex });
-                    allGraphics.push(graphic);
-                }
-            }
-
-            const graphicsList = graphics.addBlade({
-                view: 'list',
-                label: 'graphics',
-                options: dropdown,
-                value: allGraphics.indexOf(graphicsComponent.current[0]?.graphic)
-            }) as ListApi<number>;
-            graphicsList.on('change', ev => {
-                graphicsComponent.use(allGraphics[ev.value]);
-            });
-        }
-
-        const colliderComponent = this.selectedEntity.get(ex.ColliderComponent);
-        const bodyComponent = this.selectedEntity.get(ex.BodyComponent);
+    private _buildColliderUI(colliderComponent: ex.ColliderComponent, bodyComponent: ex.BodyComponent) {
         if (colliderComponent) {
 
             const collider = this.selectedEntityFolder.addFolder({
@@ -374,20 +305,110 @@ export class DevTool {
                 });
             }
         }
-
-        this.selectedEntityFolder.disabled = false;
     }
 
-    /**
-     * Add any event listeners relevant to the devtool
-     */
-    public addListeners() {
-        const game = this.engine;
-        game.canvas.addEventListener('click', () => {
-            if (this.highlightedEntities[0] !== -1) {
-                this.selectEntityById(this.highlightedEntities[0]);
+    private _buildGraphicsUI(graphicsComponent: ex.GraphicsComponent) {
+        if (graphicsComponent) {
+
+            const graphics = this.selectedEntityFolder.addFolder({
+                title: 'Graphics'
+            });
+
+            graphics.addInput(graphicsComponent, "anchor");
+            graphics.addInput(graphicsComponent, "opacity", {
+                min: 0,
+                max: 1,
+                step: 0.05
+            });
+            graphics.addInput(graphicsComponent, "visible");
+
+            // woof a lot of effort to do this
+            const dropdown: { text: string; value: number; }[] = [];
+            const allGraphics: ex.Graphic[] = [];
+            const currentGfx = graphicsComponent.current.map(c => c.graphic);
+            const namedGfx: ex.Graphic[] = [];
+            let gfxIndex = 0;
+            for (let key in graphicsComponent.graphics) {
+                dropdown.push({ text: key, value: gfxIndex++ });
+                allGraphics.push(graphicsComponent.graphics[key]);
+
+                namedGfx.push(graphicsComponent.graphics[key]);
             }
-        });
+            let anonIndex = 0;
+            for (let graphic of currentGfx) {
+                if (namedGfx.indexOf(graphic) === -1) {
+                    dropdown.push({ text: `anonymous${anonIndex++}`, value: gfxIndex });
+                    allGraphics.push(graphic);
+                }
+            }
+
+            const graphicsList = graphics.addBlade({
+                view: 'list',
+                label: 'graphics',
+                options: dropdown,
+                value: allGraphics.indexOf(graphicsComponent.current[0]?.graphic)
+            }) as ListApi<number>;
+            graphicsList.on('change', ev => {
+                graphicsComponent.use(allGraphics[ev.value]);
+            });
+        }
+    }
+
+    private _buildMotionUI(motionComponent: ex.MotionComponent) {
+        if (motionComponent) {
+            const motion = this.selectedEntityFolder.addFolder({
+                title: 'Motion'
+            });
+            motion.addInput(motionComponent, "vel");
+            motion.addInput(motionComponent, "acc");
+            motion.addInput(motionComponent, "angularVelocity", {
+                step: .1
+            });
+            motion.addInput(motionComponent, "scaleFactor");
+            motion.addInput(motionComponent, "inertia");
+        }
+    }
+
+    private _buildTransformUI(transformComponent: ex.TransformComponent) {
+        if (transformComponent) {
+            const transform = this.selectedEntityFolder.addFolder({
+                title: 'Transform'
+            });
+            const coordPlane = transform.addBlade({
+                view: 'list',
+                label: 'coord plane',
+                options: [ex.CoordPlane.World, ex.CoordPlane.Screen].map(c => ({ text: c, value: c })),
+                value: transformComponent.coordPlane
+            }) as ListApi<ex.CoordPlane>;
+            coordPlane.on("change", ev => transformComponent.coordPlane = ev.value);
+
+            const tx = transform.addInput(transformComponent, "pos");
+            const rot = transform.addInput(transformComponent, "rotation", {
+                min: 0,
+                max: 2 * Math.PI,
+            });
+            const scale = transform.addInput(transformComponent, 'scale');
+            transform.addSeparator();
+
+            const globalTx = transform.addInput(transformComponent, "globalPos", { label: "global pos" });
+            const globalRot = transform.addInput(transformComponent, "globalRotation", {
+                label: "global rot",
+                min: 0,
+                max: 2 * Math.PI,
+            });
+            const globalScale = transform.addInput(transformComponent, 'globalScale', { label: "global pos" });
+
+            globalTx.on("change", () => tx.refresh());
+            tx.on("change", () => globalTx.refresh());
+
+            globalRot.on("change", () => rot.refresh());
+            rot.on("change", () => globalRot.refresh());
+
+            globalScale.on("change", () => scale.refresh());
+            scale.on("change", () => globalScale.refresh());
+
+            transform.addInput(transformComponent, "z", {label : "z-index"});
+        }
     }
 
     private _buildScreenTab() {
