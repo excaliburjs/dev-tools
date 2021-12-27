@@ -1,9 +1,13 @@
 {
   "name": "@excaliburjs/dev-tools",
-  "version": "0.25.0",
+  "version": "0.25.2",
   "description": "Excalibur Debug Tools",
+  "source": "./dev-tools.ts",
+  "main": "./dist/dev-tools.js",
+  "types": "./dist/dev-tools.d.ts",
   "scripts": {
-    "start": "parcel serve index.html"
+    "start": "parcel serve index.html",
+    "build": "parcel build"
   },
   "author": "",
   "license": "ISC",
@@ -12,10 +16,12 @@
     "tweakpane": "3.0.7"
   },
   "devDependencies": {
+    "@parcel/packager-ts": "^2.0.1",
     "@parcel/transformer-glsl": "^2.0.1",
+    "@parcel/transformer-typescript-types": "^2.0.1",
+    "excalibur": "^0.25.1",
     "parcel": "2.0.1",
-    "typescript": "4.5.4",
-    "excalibur": "^0.25.1"
+    "typescript": "4.5.4"
   },
   "peerDependencies": {
     "excalibur": "^0.25.1"

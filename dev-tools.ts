@@ -30,6 +30,10 @@ export class DevTool {
             title: 'Excalibur Dev Tools',
             expanded: true
         });
+        const style = document.createElement('style');
+        style.innerText = ".excalibur-tweakpane-custom { width: 400px; }";
+        document.head.appendChild(style);
+        this.pane.element.parentElement.classList.add("excalibur-tweakpane-custom");
 
         this._buildMain();
 
@@ -473,13 +477,21 @@ export class DevTool {
         }
         physics.addInput(physicsSettings, "enabled").on('change', ev => Physics.enabled = ev.value);
         physics.addInput(physicsSettings, "acc");
-        physics.addInput(physicsSettings, "collisionResolutionStrategy");
+        const solverInput = physics.addInput(physicsSettings, "collisionResolutionStrategy");
         physics.addButton({
             title: 'Use Arcade'
-        }).on('click', () => Physics.useArcadePhysics());
+        }).on('click', () => {
+            Physics.useArcadePhysics();
+            physicsSettings.collisionResolutionStrategy = Physics.collisionResolutionStrategy;
+            solverInput.refresh();
+        });
         physics.addButton({
             title: 'Use Realistic'
-        }).on('click', () => Physics.useRealisticPhysics());
+        }).on('click', () => { 
+            Physics.useRealisticPhysics();
+            physicsSettings.collisionResolutionStrategy = Physics.collisionResolutionStrategy;
+            solverInput.refresh();
+        });
         physics.addInput(physicsSettings, "positionIterations", {
             min: 1,
             max: 30,

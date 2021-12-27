@@ -1,5 +1,5 @@
 import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text } from "excalibur";
-import { DevTool } from "./dev-tool";
+import { DevTool } from "./dev-tools";
 
 const game = new Engine({
     width: 800,

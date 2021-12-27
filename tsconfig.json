@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+       "moduleResolution": "node",
+       "target": "es2015",
+       "lib": ["DOM", "ES2019"],
+       "declaration": true,
+       "outDir": "./dist",
+       "sourceMap": true
+    },
+    "include": ["dev-tools.ts"],
+    "exclude": ["./index.ts"]
+ }
