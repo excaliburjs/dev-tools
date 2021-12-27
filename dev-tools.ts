@@ -64,11 +64,11 @@ export class DevTool {
         });
 
 
-        this.buildScreen();
-        this.buildCamera();
-        this.buildClock();
-        this.buildPhysics();
-        this.buildDebugSettingsTab();
+        this._buildScreenTab();
+        this._buildCameraTab();
+        this._buildClockTab();
+        this._buildPhysicsTab();
+        this._buildDebugSettingsTab();
 
         setInterval(() => {
             this.update(this)
@@ -143,9 +143,12 @@ export class DevTool {
             "label": "Select By Id"
         }).on("change", ev => this.selectEntityById(ev.value));
 
-
     }
 
+    /**
+     * `update()` is called periodically over time
+     * @param devtool 
+     */
     public update(devtool: DevTool) {
         const game = devtool.engine;
         // Current pointer pos
@@ -231,7 +234,6 @@ export class DevTool {
 
         const transformComponent = this.selectedEntity.get(ex.TransformComponent)
         if (transformComponent) {
-
             const transform = this.selectedEntityFolder.addFolder({
                 title: 'Transform'
             });
@@ -271,7 +273,6 @@ export class DevTool {
 
         const motionComponent = this.selectedEntity.get(ex.MotionComponent);
         if (motionComponent) {
-
             const motion = this.selectedEntityFolder.addFolder({
                 title: 'Motion'
             });
@@ -378,6 +379,9 @@ export class DevTool {
         this.selectedEntityFolder.disabled = false;
     }
 
+    /**
+     * Add any event listeners relevant to the devtool
+     */
     public addListeners() {
         const game = this.engine;
         game.canvas.addEventListener('click', () => {
@@ -387,7 +391,7 @@ export class DevTool {
         });
     }
 
-    public buildScreen() {
+    private _buildScreenTab() {
         this.screenFolder = this.screenTab.addFolder({
             title: 'Screen'
         });
@@ -416,7 +420,7 @@ export class DevTool {
         });
     }
 
-    public buildCamera() {
+    private _buildCameraTab() {
         const cameraFolder = this.cameraTab.addFolder({
             title: 'Camera',
         });
@@ -429,7 +433,7 @@ export class DevTool {
         cameraFolder.addInput(this.engine.currentScene.camera, "pos");
     }
 
-    public buildClock() {
+    private _buildClockTab() {
         const clock = this.clockTab.addFolder({
             title: 'Clock'
         });
@@ -494,7 +498,7 @@ export class DevTool {
 
     }
 
-    public buildPhysics() {
+    private _buildPhysicsTab() {
         const physics = this.physicsTab;
 
         const physicsSettings: typeof ex.Physics = {} as any
@@ -533,7 +537,7 @@ export class DevTool {
         physics.addInput(physicsSettings, "checkForFastBodies").on("change", ev => ex.Physics.checkForFastBodies = ev.value);
     }
 
-    public buildDebugSettingsTab() {
+    private _buildDebugSettingsTab() {
         const debug = this.debugTab;
 
         var supportedKeys = ['entity', 'transform', 'motion', 'body', 'collider', 'physics', 'graphics', 'camera'];
