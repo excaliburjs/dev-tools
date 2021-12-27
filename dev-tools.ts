@@ -102,12 +102,17 @@ export class DevTool {
         const motionComponent = this.selectedEntity.get(ex.MotionComponent);
         this._buildMotionUI(motionComponent);
 
-        const graphicsComponent = this.selectedEntity.get(ex.GraphicsComponent);
-        this._buildGraphicsUI(graphicsComponent);
-
-        const colliderComponent = this.selectedEntity.get(ex.ColliderComponent);
-        const bodyComponent = this.selectedEntity.get(ex.BodyComponent);
-        this._buildColliderUI(colliderComponent, bodyComponent);
+        if (this.selectedEntity instanceof ex.ParticleEmitter) {
+            // build particle emitter UI
+            this._buildParticleEmitterUI(this.selectedEntity);
+        } else {
+            const graphicsComponent = this.selectedEntity.get(ex.GraphicsComponent);
+            this._buildGraphicsUI(graphicsComponent);
+            
+            const colliderComponent = this.selectedEntity.get(ex.ColliderComponent);
+            const bodyComponent = this.selectedEntity.get(ex.BodyComponent);
+            this._buildColliderUI(colliderComponent, bodyComponent);
+        }
     }
 
     /**
@@ -305,6 +310,46 @@ export class DevTool {
                 });
             }
         }
+    }
+
+    private _buildParticleEmitterUI(particles: ex.ParticleEmitter) {
+        const particlesFolder = this.selectedEntityFolder.addFolder({
+            title: 'Particles'
+        });
+
+        particlesFolder.addInput(particles, "isEmitting");
+        particlesFolder.addInput(particles, "emitRate");
+        particlesFolder.addInput(particles, "fadeFlag");
+        particlesFolder.addInput(particles, "particleLife", {
+            min: 100,
+            max: 10000,
+            step: 100
+        });
+        particlesFolder.addInput(particles, "width");
+        particlesFolder.addInput(particles, "height");
+        particlesFolder.addInput(particles, "minVel");
+        particlesFolder.addInput(particles, "maxVel");
+        particlesFolder.addInput(particles, "minAngle", {
+            min: 0,
+            max: Math.PI * 2,
+            step: .1
+        });
+        particlesFolder.addInput(particles, "maxAngle",  {
+            min: 0,
+            max: Math.PI * 2,
+            step: .1
+        });
+        particlesFolder.addInput(particles, "minSize");
+        particlesFolder.addInput(particles, "maxSize");
+        particlesFolder.addInput(particles, "beginColor");
+        particlesFolder.addInput(particles, "endColor");
+        particlesFolder.addInput(particles, "opacity", {
+            min: 0,
+            max: 1,
+            step: .01
+        });
+        particlesFolder.addInput(particles, "randomRotation");
+        particlesFolder.addInput(particles, "particleRotationalVelocity");
     }
 
     private _buildGraphicsUI(graphicsComponent: ex.GraphicsComponent) {

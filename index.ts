@@ -1,4 +1,4 @@
-import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text } from "excalibur";
+import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text, ParticleEmitter } from "excalibur";
 import { DevTool } from "./dev-tools";
 
 const game = new Engine({
@@ -85,6 +85,29 @@ otherScene.add(new Actor({
     name: "Actor in another scene without things",
     pos: vec(200, 200),
 }));
+var emitter = new ParticleEmitter({
+    pos: vec(100, 300),
+    width: 2,
+    height: 2,
+    minVel: 417,
+    maxVel: 589,
+    minAngle: Math.PI,
+    maxAngle: Math.PI * 2,
+    isEmitting: true,
+    emitRate: 494,
+    opacity: 0.84,
+    fadeFlag: true,
+    particleLife: 2465,
+    maxSize: 20.5,
+    minSize: 10,
+    acceleration: vec(0, 460),
+    beginColor: Color.Blue,
+    endColor: Color.Red,
+    // particleSprite: blockSpriteLegacy,
+    particleRotationalVelocity: Math.PI / 10,
+    randomRotation: true
+  });
+otherScene.add(emitter);
 
 game.start();
 

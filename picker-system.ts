@@ -1,4 +1,4 @@
-import { Engine, System, SystemType, TransformComponent, Input, Scene, Entity, ColliderComponent, GraphicsComponent, CoordPlane, BoundingBox } from "excalibur";
+import { Engine, System, SystemType, TransformComponent, Input, Scene, Entity, ColliderComponent, GraphicsComponent, CoordPlane, BoundingBox, Particle, ParticleEmitter } from "excalibur";
 
 export class PickerSystem extends System<TransformComponent> {
     public readonly types = ['ex.transform'] as const;
@@ -34,6 +34,10 @@ export class PickerSystem extends System<TransformComponent> {
   
       // Pre-process find entities under pointers
       for (const entity of entities) {
+        // skip particles
+        if (entity instanceof Particle) {
+            continue;
+        }
         transform = entity.get(TransformComponent);
         // Check collider contains pointer
         maybeCollider = entity.get(ColliderComponent);
@@ -60,7 +64,7 @@ export class PickerSystem extends System<TransformComponent> {
         }
   
         // Synthetic geometry to help with the picking when no graphics or collider exist
-        if (!(maybeGraphics?.current?.length) && !(maybeCollider?.get())) {
+        if (!(maybeGraphics?.current?.length) && !(maybeCollider?.get()) || entity instanceof ParticleEmitter) {
           const bounds = BoundingBox.fromDimension(100, 100).transform(transform.getGlobalMatrix());
           for (const [pointerId, pos] of this._receiver.currentFramePointerCoords.entries()) {
             if (bounds.contains(transform.coordPlane === CoordPlane.World ? pos.worldPos : pos.screenPos)) {

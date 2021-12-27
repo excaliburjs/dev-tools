@@ -23,5 +23,4 @@ Install node & npm
 
 ### TODO Currently Unspported
 
-- [ ] Support particle emitters
 - [ ] Support timers
