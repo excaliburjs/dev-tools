@@ -623,6 +623,11 @@ export class DevTool {
             physicsSettings.collisionResolutionStrategy = ex.Physics.collisionResolutionStrategy;
             solverInput.refresh();
         });
+
+        physics.addInput(physicsSettings, 'bodiesCanSleepByDefault').on("change", ev => ex.Physics.bodiesCanSleepByDefault = ev.value);
+        physics.addInput(physicsSettings, 'warmStart').on("change", ev => ex.Physics.warmStart = ev.value);
+        physics.addInput(physicsSettings, 'sleepEpsilon', { min: 0.01, max: 2, step: .05}).on("change", ev => ex.Physics.sleepEpsilon = ev.value);
+        physics.addInput(physicsSettings, 'wakeThreshold', { min: 0.01, max: 2, step: .05}).on("change", ev => ex.Physics.wakeThreshold = ev.value);
         physics.addInput(physicsSettings, "positionIterations", {
             min: 1,
             max: 30,
