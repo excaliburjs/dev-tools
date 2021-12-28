@@ -61,6 +61,7 @@ game.add(label);
 const label2 = new Label({
     text: "Label text",
     font: text.font as Font,
+    color: Color.Green,
     pos: vec(400, 300),
 });
 game.add(label2);

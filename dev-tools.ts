@@ -499,7 +499,7 @@ export class DevTool {
         cameraFolder.addInput(this.engine.currentScene.camera, "zoom", {
             min: .01,
             max: 10,
-            step: .5
+            step: .1
         });
         cameraFolder.addInput(this.engine.currentScene.camera, "pos");
     }
