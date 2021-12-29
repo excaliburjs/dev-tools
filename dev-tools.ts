@@ -272,6 +272,17 @@ export class DevTool {
             options: entity.children.map(c => ({ text: `(${c.id}) ${c.name}`, value: c.id })),
             value: entity.children.length ? entity.children[0].id : 'none',
         });
+        this.selectedEntityFolder.addButton({
+            title: 'Kill Entity'
+        }).on("click", ev => {
+            this.selectedEntity.kill();
+            // clear entity tab
+            this.selectedEntityFolder.dispose();
+            this.selectedEntityFolder = this.selectedEntityTab.addFolder({
+                title: 'Selected'
+            });
+        });
+
     }
 
     private _buildColliderUI(colliderComponent: ex.ColliderComponent, bodyComponent: ex.BodyComponent) {
