@@ -8,6 +8,11 @@ UI is built using [tweakpane](https://cocopon.github.io/tweakpane/)
 
 ### Using dev tools in your excalibur game!
 
+```
+> npm install @excaliburjs/dev-tools
+```
+
+
 ```typescript
 const game = new ex.Engine({...});
 const devtool = new DevTool(game);
