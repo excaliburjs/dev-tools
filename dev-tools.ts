@@ -500,6 +500,33 @@ export class DevTool {
         fullscreen.on('click', () => {
             this.engine.screen.goFullScreen();
         });
+
+        this.screenFolder.addSeparator();
+
+        const colorBlindness = this.screenFolder.addBlade({
+            view: 'list',
+            label: 'Color Blindness Mode',
+            options: [ex.ColorBlindnessMode.Deuteranope, ex.ColorBlindnessMode.Protanope, ex.ColorBlindnessMode.Tritanope].map(c => ({ text: c, value: c })),
+            value: ex.ColorBlindnessMode.Deuteranope
+        }) as ListApi<ex.ColorBlindnessMode>;
+
+        const shouldSimulate = {"simulate": false};
+        const simulate = this.screenFolder.addInput(shouldSimulate, "simulate");
+
+        this.screenFolder.addButton({
+            title: 'Apply'
+        }).on("click", () => {
+            if (shouldSimulate.simulate) {
+                this.engine.debug.colorBlindMode.simulate(colorBlindness.value);
+            } else {
+                this.engine.debug.colorBlindMode.correct(colorBlindness.value);
+            }
+        });
+        this.screenFolder.addButton({
+            title: 'Clear'
+        }).on('click', () => {
+            this.engine.debug.colorBlindMode.clear();
+        });
     }
 
     private _buildCameraTab() {
