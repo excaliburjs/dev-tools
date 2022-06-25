@@ -55,7 +55,7 @@ export class PickerSystem extends System<TransformComponent> {
         // Check graphics contains pointer
         maybeGraphics = entity.get(GraphicsComponent);
         if (maybeGraphics) {
-          const graphicBounds = maybeGraphics.localBounds.transform(transform.getGlobalMatrix());
+          const graphicBounds = maybeGraphics.localBounds.transform(transform.get().matrix);
           for (const [pointerId, pos] of this._receiver.currentFramePointerCoords.entries()) {
             if (graphicBounds.contains(transform.coordPlane === CoordPlane.World ? pos.worldPos : pos.screenPos)) {
               this.addPointerToEntity(entity, pointerId);
@@ -65,7 +65,7 @@ export class PickerSystem extends System<TransformComponent> {
   
         // Synthetic geometry to help with the picking when no graphics or collider exist
         if (!(maybeGraphics?.current?.length) && !(maybeCollider?.get()) || entity instanceof ParticleEmitter) {
-          const bounds = BoundingBox.fromDimension(100, 100).transform(transform.getGlobalMatrix());
+          const bounds = BoundingBox.fromDimension(100, 100).transform(transform.get().matrix);
           for (const [pointerId, pos] of this._receiver.currentFramePointerCoords.entries()) {
             if (bounds.contains(transform.coordPlane === CoordPlane.World ? pos.worldPos : pos.screenPos)) {
               this.addPointerToEntity(entity, pointerId);
