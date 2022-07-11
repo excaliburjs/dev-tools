@@ -1,5 +1,13 @@
-import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text, ParticleEmitter, Timer } from "excalibur";
+import { Actor, Color, DisplayMode, Engine, vec, CollisionType, Vector, Scene, Label, Font, FontUnit, Text, ParticleEmitter, Timer, Input, Random } from "excalibur";
 import { DevTool } from "./dev-tools";
+
+const rand = new Random(1234)
+
+const fontOptions = {
+    family: 'Times New Roman',
+    size: 30, 
+    unit: FontUnit.Px
+};
 
 const game = new Engine({
     width: 800,
@@ -44,11 +52,7 @@ game.add(ground);
 
 const text = new Text({
     text: "Yo it's text",
-    font: new Font({
-        family: 'Times New Roman',
-        size: 30,
-        unit: FontUnit.Px
-    }),
+    font: new Font(fontOptions),
 });
 const label = new Actor({
     pos: vec(400, 100)
@@ -126,5 +130,46 @@ var emitter = new ParticleEmitter({
 otherScene.add(emitter);
 
 game.start();
+
+const dynamicSceneKey = 'dynamic scene';
+
+const createDynamicScene = () => {
+    if(dynamicSceneKey in game.scenes) {
+        game.removeScene(dynamicSceneKey);
+    }
+
+    const dynamicScene = new Scene();
+
+    for (let index = 0; index < rand.integer(1, 5); index++) {        
+        const label = new Actor({ 
+            pos: vec(10, 30 + (index * 30)),
+            anchor: vec(0, 0),
+        });
+        const text = new Text({
+            text: `Dynamically added scene with varying entities ${index} 👋`,
+            font: new Font({ ...fontOptions, size: 18 }),
+            color: Color.Orange,
+        });
+        label.graphics.use(text);
+        dynamicScene.add(label);
+    }
+    
+    game.addScene(dynamicSceneKey, dynamicScene);
+};
+
+game.input.keyboard.on("press", (evt: Input.KeyEvent) => {
+    switch(evt.key) {
+        // Add a dynamic scene, without activating it. This should still be reflected in dev tools
+        case Input.Keys.N:
+            createDynamicScene();
+            break;
+            
+        // Add a dynamic scene and activate it
+        case Input.Keys.A:
+            createDynamicScene();
+            game.goToScene(dynamicSceneKey);
+            break;
+    } 
+});
 
 const devtool = new DevTool(game);

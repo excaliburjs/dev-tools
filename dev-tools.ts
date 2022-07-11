@@ -2,6 +2,9 @@ import * as ex from "excalibur";
 import { BladeApi, FolderApi, ListApi, Pane, SliderApi, TabApi, TabPageApi } from "tweakpane";
 import { PickerSystem } from './picker-system'
 
+type SceneOption = { text: string, value: string };
+type ArrayComparator<T> = (item: T, index: number, otherItems: T[]) => boolean
+
 export class DevTool {
     public pane: Pane
     public tabs: TabApi;
@@ -166,6 +169,9 @@ export class DevTool {
         }
         // Update timers
         this._buildTimersTab();
+
+        // Update scene ui
+        this._buildSceneUI();
     }
 
 
@@ -190,43 +196,8 @@ export class DevTool {
             max: 120
         });
 
-        let currentSceneName = '';
-        let scenes: { text: string, value: string }[] = []
-        for (let key in this.engine.scenes) {
-            if (this.engine.currentScene === this.engine.scenes[key]) {
-                currentSceneName = key;
-            }
-            scenes.push({ text: key, value: key })
-        }
+        this._buildSceneUI();
 
-        let numberEntitiesBlade: BladeApi<any>;
-        const scenePicker = this.pane.addBlade({
-            view: 'list',
-            label: 'current scene',
-            options: scenes,
-            value: currentSceneName
-        }) as ListApi<string>;
-
-        scenePicker.on('change', ev => {
-            this.engine.goToScene(ev.value);
-            this._installPickerSystemIfNeeded(this.engine.currentScene);
-            numberEntitiesBlade.dispose();
-            numberEntitiesBlade = this.pane.addBlade({
-                view: 'text',
-                label: 'number of entities',
-                value: this.engine.currentScene.world.entityManager.entities.length,
-                parse: v => String(v),
-                index: 3
-            });
-        });
-
-        numberEntitiesBlade = this.pane.addBlade({
-            view: 'text',
-            label: 'number of entities',
-            value: this.engine.currentScene.world.entityManager.entities.length,
-            parse: v => String(v),
-            index: 3
-        });
         this.pointerPos = { x: 10, y: 10 };
         this.pointerPosInput = this.pane.addInput(this, "pointerPos", {
             label: 'pointer pos (world)'
@@ -701,5 +672,70 @@ export class DevTool {
                 }
             }
         }
+    }
+
+    private _scenePicker: ListApi<string>;
+    private _numberEntitiesBlade: BladeApi<any>;
+    private _previousScenes: SceneOption[] = [];
+    private _previousScene: ex.Scene = null;
+
+    private _areArraysEqual<T = any>(items: T[], otherItems: T[], comparator: ArrayComparator<T>) {
+        if(items.length !== otherItems.length) {
+            return false;
+        }
+        
+        return items.every(comparator)
+    }
+
+    private _areScenesEqual(previousScenes: SceneOption[], scenes: SceneOption[]) {
+        return this._areArraysEqual(previousScenes, scenes, (item, index, otherItems) => item.value === otherItems[index].value);
+    }
+
+    private _buildSceneUI() {
+        const scenes: SceneOption[] = [];
+        let currentSceneName = '';
+
+        for (let key in this.engine.scenes) {
+            if (this.engine.currentScene === this.engine.scenes[key]) {
+                currentSceneName = key;
+            }
+            scenes.push({ text: key, value: key })
+        }
+        
+        if(this._previousScene === this.engine.currentScene && this._areScenesEqual(this._previousScenes, scenes)) {
+            return;
+        }
+
+        if(this._scenePicker) {
+            this._scenePicker.dispose();
+        }
+
+        if(this._numberEntitiesBlade) {
+            this._numberEntitiesBlade.dispose();
+        }
+
+        this._scenePicker = this.pane.addBlade({
+            view: 'list',
+            label: 'current scene',
+            options: scenes,
+            value: currentSceneName,
+            index: 2,
+        }) as ListApi<string>;
+
+        this._scenePicker.on('change', ev => {
+            this.engine.goToScene(ev.value);
+        });
+
+        this._numberEntitiesBlade = this.pane.addBlade({
+            view: 'text',
+            label: 'number of entities',
+            value: this.engine.currentScene.world.entityManager.entities.length,
+            parse: v => String(v),
+            index: 3
+        });
+
+        this._installPickerSystemIfNeeded(this.engine.currentScene);
+        this._previousScene = this.engine.currentScene;
+        this._previousScenes = scenes;
     }
 }
