@@ -1,3 +1,10 @@
+# ⚠️ Excalibur dev tools are moving to a browser extension ⚠️
+
+Please visit:
+* Source code: https://github.com/excaliburjs/excalibur-extension/
+* Official Chrome Plugin: https://chromewebstore.google.com/detail/excalibur-dev-tools/dinddaeielhddflijbbcmpefamfffekc
+
+
 ## Excalibur Dev Tools
 
 This is a dev tool to help you debug your game written in excalibur.
